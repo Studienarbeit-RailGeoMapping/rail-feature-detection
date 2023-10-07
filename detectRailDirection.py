@@ -7,6 +7,7 @@ import numpy
 img_path = rng.choice(glob('labeled_images/milestones/JPEGImages/*.jpg'))
 # img_path = 'labeled_images/milestones/JPEGImages/1692968384-582.jpg'
 # img_path = 'labeled_images/milestones/JPEGImages/1692968391-602.jpg'
+# img_path = 'labeled_images/milestones/JPEGImages/1692968244-241.jpg'
 
 print(f'showing {img_path}')
 
@@ -93,7 +94,7 @@ if len(lines) > 2:
 
     for track in rail:
         random_color = (rng.randrange(0, 255), rng.randrange(0, 255), rng.randrange(0, 255))
-        cv.drawContours(contured_image, track.contour, -1, random_color, 2, cv.LINE_8)
+        cv.drawContours(contured_image, track.contour, -1, random_color, 2, cv.LINE_4)
 
     mean_angle = numpy.mean(list(map(lambda x: x.get_angle(), rail)))
     print(f'{mean_angle} -> {angle_to_category(mean_angle)}')
