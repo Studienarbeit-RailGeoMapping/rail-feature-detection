@@ -16,6 +16,8 @@ test_results = {
     "failed": 0,
 }
 
+test_failed_paths = []
+
 test_start_time = time.time()
 
 for path, expected_result in labels.items():
@@ -33,6 +35,7 @@ for path, expected_result in labels.items():
         print('.', end='', flush=True)
     else:
         test_results["failed"] += 1
+        test_failed_paths.append(path)
         print('F', end='', flush=True)
 
 test_duration = time.time() - test_start_time
@@ -40,4 +43,6 @@ test_duration = time.time() - test_start_time
 print()
 print(test_results)
 
-print(f'\nTests took {test_duration:.2} s')
+print(f'\nTests took {test_duration:.3} s')
+
+print(f'Failed images: {test_failed_paths}')

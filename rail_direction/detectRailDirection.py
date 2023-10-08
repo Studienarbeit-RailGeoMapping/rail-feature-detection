@@ -29,14 +29,15 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     # ret, img = cv.threshold(img, 150, 255, cv.THRESH_BINARY)
 
-    cv.imshow('img', img)
-    # cv.waitKey(0)
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        cv.imshow('img', img)
+        # cv.waitKey(0)
 
 
     # # canny_output = cv.Canny(cv.cvtColor(
     # #     img, cv.COLOR_BGR2GRAY), threshold, threshold * 2)
 
-    contours, hierarchy = cv.findContours(
+    contours, _hierarchy = cv.findContours(
         img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
 
     # read colored image to draw contures on
@@ -51,8 +52,6 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
             return 'slight'
 
         return 'straight'
-
-    angles = []
 
     class LineBoundingRect:
         def __init__(self, x_start, y_start, x_width, y_height, contour, contour_idx) -> None:
@@ -87,81 +86,89 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
             lines.append(line)
 
-    if len(lines) > 2:
-        # get rail by getting two longest lines
-        rail = sorted(lines, key=lambda x: x.y_height, reverse=True)[0:2]
+    if len(lines) <= 2:
+        return None
 
-        standard_deviations = []
-        i = 0
+    # get rail by getting two longest lines
+    rail = sorted(lines, key=lambda x: x.y_height, reverse=True)[0:2]
 
-        for track in rail:
-            random_color = (rng.randrange(0, 255), rng.randrange(0, 255), rng.randrange(0, 255))
+    standard_deviations = []
+    i = 0
+
+    for track in rail:
+        random_color = (rng.randrange(0, 255), rng.randrange(0, 255), rng.randrange(0, 255))
+
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
             cv.drawContours(contured_image, track.contour, -1, random_color, 2, cv.LINE_4)
 
-            x_to_y = {}
+        x_to_y = {}
 
-            for vec in track.contour:
-                for x, y in vec:
-                    if x not in x_to_y:
-                        x_to_y[x] = []
+        for vec in track.contour:
+            for x, y in vec:
+                if x not in x_to_y:
+                    x_to_y[x] = []
 
-                    x_to_y[x].append(y)
+                x_to_y[x].append(y)
 
-            # calculate mean of all coordinates
-            for x in x_to_y:
-                x_to_y[x] = numpy.mean(x_to_y[x])
+        # calculate mean of all coordinates
+        for x in x_to_y:
+            x_to_y[x] = numpy.mean(x_to_y[x])
 
-            change_rates = []
+        change_rates = []
 
-            min_x = min(x_to_y.keys())
-            max_x = max(x_to_y.keys())
+        min_x = min(x_to_y.keys())
+        max_x = max(x_to_y.keys())
 
-            for i in range(min_x, max_x):
-                if i not in x_to_y:
-                    continue
+        for i in range(min_x, max_x):
+            if i not in x_to_y:
+                continue
 
-                if i-1 not in x_to_y:
-                    continue
+            if i-1 not in x_to_y:
+                continue
 
-                change_rate = (x_to_y[i - 1] - x_to_y[i])
+            change_rate = (x_to_y[i - 1] - x_to_y[i])
 
-                change_rates.append(change_rate)
+            change_rates.append(change_rate)
 
-            if len(change_rates) > 1:
-                logging.debug(change_rates)
-                std = numpy.std(change_rates, ddof=1)
-                logging.debug(std)
+        if len(change_rates) > 1:
+            logging.debug(change_rates)
+            std = numpy.std(change_rates, ddof=1)
+            logging.debug(std)
 
-                standard_deviations.append(std)
+            standard_deviations.append(std)
 
-            i += 1
+        i += 1
 
-        if len(standard_deviations) == 0:
-            return None
+    if len(standard_deviations) == 0:
+        return None
 
-        mean_std_deviation = numpy.mean(standard_deviations)
-        logging.debug(f'mean std deviation: {mean_std_deviation}')
+    mean_std_deviation = numpy.mean(standard_deviations)
+    logging.debug(f'mean std deviation: {mean_std_deviation}')
 
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
         cv.putText(contured_image, std_to_category(mean_std_deviation), (10, 40), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
         cv.imshow('img', contured_image)
 
-        return std_to_category(mean_std_deviation)
+    return std_to_category(mean_std_deviation)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+
     while True:
         img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
+        # img_path = '../labeled_images/milestones/JPEGImages/1692968786-1449.jpg'
         get_rail_direction_from_path(img_path)
 
         pressed_key = cv.waitKey(0)
 
         label = None
-        # slight left (Left)
-        if pressed_key == 3:
-            label = 'slight_left'
         # slight right (Right)
-        elif pressed_key == 2:
+        if pressed_key == 2:
             label = 'slight_right'
+        # slight left (Left)
+        elif pressed_key == 3:
+            label = 'slight_left'
         # straight (Up)
         elif pressed_key == 0:
             label = 'straight'
@@ -179,3 +186,4 @@ if __name__ == '__main__':
         if label is not None:
             with open("../labeled_images/directions/labelmap.txt", "a+") as myfile:
                 myfile.write(f"{img_path}:{label}\n")
+                logging.info(f'labeled as {label}…\n')
