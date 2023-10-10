@@ -6,6 +6,14 @@ import numpy
 import random as rng
 import sys
 
+def final_rail_direction_from_directions(directions: list) -> str|None:
+    [first, second] = directions
+
+    if first == second:
+        return first
+
+    return None
+
 def get_rail_direction_from_path(img_path: str) -> str|None:
     logging.debug(f'showing {img_path}')
 
@@ -25,13 +33,11 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     img = cv.medianBlur(img, 3)
 
     img = cv.adaptiveThreshold(
-        img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 5, 15)
-
-    # ret, img = cv.threshold(img, 150, 255, cv.THRESH_BINARY)
+        img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 7, 17)
 
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         cv.imshow('img', img)
-        # cv.waitKey(0)
+        cv.waitKey(0)
 
 
     # # canny_output = cv.Canny(cv.cvtColor(
@@ -48,7 +54,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
         if std > 4:
             return 'sharp'
 
-        if std > 2:
+        if std > 1:
             return 'slight'
 
         return 'straight'
@@ -72,14 +78,14 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
             return math.sqrt(x_width * x_width + y_height * y_height)
 
         def __repr__(self) -> str:
-            return f"LineBoundingRect(y_height={self.y_height})"
+            return f"LineBoundingRect(y_height={self.y_height}, x_start={self.x_start})"
 
     lines = []
 
     for i in range(len(contours)):
         x_start, y_start, x_width, y_height = cv.boundingRect(contours[i])
 
-        # get all contours that touch the lower 5 %
+        # get all contours that touch the lower 5 % and are not to far away from center
         if y_start + y_height > cropped_height * 0.9:
             line = LineBoundingRect(x_start, y_start, x_width, y_height, contours[i], i)
             # logging.debug(line.get_area())
@@ -95,7 +101,31 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     standard_deviations = []
     i = 0
 
+    left_track = None
+    right_track = None
+
     for track in rail:
+        if left_track is None or left_track.x_start > track.x_start:
+            left_track = track
+
+        if right_track is None or right_track.x_start < track.x_start:
+            right_track = track
+
+    if left_track is None or right_track is None:
+        return None
+
+    if left_track == right_track:
+        return None
+
+    rail_direction = None
+    track_with_more_contours = max([left_track, right_track], key=lambda x: len(x.contour))
+
+    for track in [left_track, right_track]:
+        if track == left_track:
+            logging.debug('left')
+        else:
+            logging.debug('right')
+
         random_color = (rng.randrange(0, 255), rng.randrange(0, 255), rng.randrange(0, 255))
 
         if logging.getLogger().isEnabledFor(logging.DEBUG):
@@ -130,6 +160,12 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
             change_rates.append(change_rate)
 
+        if track == track_with_more_contours:
+            if x_to_y[max_x] - x_to_y[min_x] < 0:
+                rail_direction = 'right'
+            else:
+                rail_direction = 'left'
+
         if len(change_rates) > 1:
             logging.debug(change_rates)
             std = numpy.std(change_rates, ddof=1)
@@ -142,14 +178,33 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     if len(standard_deviations) == 0:
         return None
 
+    if len(standard_deviations) == 2 and abs(standard_deviations[1] - standard_deviations[0]) > 3:
+        return None
+
     mean_std_deviation = numpy.mean(standard_deviations)
     logging.debug(f'mean std deviation: {mean_std_deviation}')
 
+    horizontal_space_between_rails = right_track.x_start - left_track.x_start
+    logging.info(f"horizontal space between rails: {horizontal_space_between_rails} px")
+
+    # if horizontal_space_between_rails < 30 or horizontal_space_between_rails > 175:
+    #     logging.info(f"too less/much difference between two rails -> no indication possible: {horizontal_space_between_rails} px")
+    #     return None
+
+    logging.debug(f'left: {left_track}')
+    logging.debug(f'right: {right_track}')
+    logging.debug(f'detected directions: {rail_direction}')
+
+    label = std_to_category(mean_std_deviation)
+
+    if label != 'straight':
+        label += f'_{rail_direction}'
+
     if logging.getLogger().isEnabledFor(logging.DEBUG):
-        cv.putText(contured_image, std_to_category(mean_std_deviation), (10, 40), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+        cv.putText(contured_image, label, (10, 40), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
         cv.imshow('img', contured_image)
 
-    return std_to_category(mean_std_deviation)
+    return label
 
 
 if __name__ == '__main__':
@@ -157,8 +212,8 @@ if __name__ == '__main__':
 
     while True:
         img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
-        # img_path = '../labeled_images/milestones/JPEGImages/1692968786-1449.jpg'
-        get_rail_direction_from_path(img_path)
+        # img_path = '../labeled_images/milestones/JPEGImages/1692968178-1.jpg'
+        result = get_rail_direction_from_path(img_path)
 
         pressed_key = cv.waitKey(0)
 
@@ -183,7 +238,8 @@ if __name__ == '__main__':
         else:
             logging.info(f'unknown key pressed: keycode={pressed_key}')
 
-        if label is not None:
+        if result is not None and label is not None:
             with open("../labeled_images/directions/labelmap.txt", "a+") as myfile:
                 myfile.write(f"{img_path}:{label}\n")
                 logging.info(f'labeled as {label}…\n')
+
