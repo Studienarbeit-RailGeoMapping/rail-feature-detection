@@ -47,8 +47,9 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
         img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
 
     # read colored image to draw contures on
-    contured_image = cv.imread(img_path)
-    contured_image = contured_image[top:top+cropped_height, right:right+cropped_width]
+    colored_image = cv.imread(img_path)[top:top+cropped_height, right:right+cropped_width]
+
+    contured_image = colored_image
 
     def std_to_category(std: int):
         if std > 4:
@@ -82,12 +83,12 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     lines = []
 
-    for i in range(len(contours)):
-        x_start, y_start, x_width, y_height = cv.boundingRect(contours[i])
+    for key in range(len(contours)):
+        x_start, y_start, x_width, y_height = cv.boundingRect(contours[key])
 
         # get all contours that touch the lower 5 % and are not to far away from center
         if y_start + y_height > cropped_height * 0.9:
-            line = LineBoundingRect(x_start, y_start, x_width, y_height, contours[i], i)
+            line = LineBoundingRect(x_start, y_start, x_width, y_height, contours[key], key)
             # logging.debug(line.get_area())
 
             lines.append(line)
@@ -99,7 +100,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     rail = sorted(lines, key=lambda x: x.y_height, reverse=True)[0:2]
 
     standard_deviations = []
-    i = 0
+    key = 0
 
     left_track = None
     right_track = None
@@ -120,48 +121,48 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     rail_direction = None
     track_with_more_contours = max([left_track, right_track], key=lambda x: len(x.contour))
 
+    track_specific_x_to_y = {
+        'left': {},
+        'right': {}
+    }
+
     for track in [left_track, right_track]:
-        if track == left_track:
-            logging.debug('left')
-        else:
-            logging.debug('right')
+        key = 'left' if track == left_track else 'right'
 
         random_color = (rng.randrange(0, 255), rng.randrange(0, 255), rng.randrange(0, 255))
 
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             cv.drawContours(contured_image, track.contour, -1, random_color, 2, cv.LINE_4)
 
-        x_to_y = {}
-
         for vec in track.contour:
             for x, y in vec:
-                if x not in x_to_y:
-                    x_to_y[x] = []
+                if x not in track_specific_x_to_y:
+                    track_specific_x_to_y[key][x] = []
 
-                x_to_y[x].append(y)
+                track_specific_x_to_y[key][x].append(y)
 
         # calculate mean of all coordinates
-        for x in x_to_y:
-            x_to_y[x] = numpy.mean(x_to_y[x])
+        for x in track_specific_x_to_y[key]:
+            track_specific_x_to_y[key][x] = numpy.mean(track_specific_x_to_y[key][x])
 
         change_rates = []
 
-        min_x = min(x_to_y.keys())
-        max_x = max(x_to_y.keys())
+        min_y = min(track_specific_x_to_y[key].keys())
+        max_y = max(track_specific_x_to_y[key].keys())
 
-        for i in range(min_x, max_x):
-            if i not in x_to_y:
+        for j in range(min_y, max_y):
+            if j not in track_specific_x_to_y[key]:
                 continue
 
-            if i-1 not in x_to_y:
+            if j-1 not in track_specific_x_to_y[key]:
                 continue
 
-            change_rate = (x_to_y[i - 1] - x_to_y[i])
+            change_rate = (track_specific_x_to_y[key][j - 1] - track_specific_x_to_y[key][j])
 
             change_rates.append(change_rate)
 
         if track == track_with_more_contours:
-            if x_to_y[max_x] - x_to_y[min_x] < 0:
+            if track_specific_x_to_y[key][max_y] - track_specific_x_to_y[key][min_y] < 0:
                 rail_direction = 'right'
             else:
                 rail_direction = 'left'
@@ -173,7 +174,57 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
             standard_deviations.append(std)
 
-        i += 1
+    horizontal_space_between_rails = right_track.x_start - left_track.x_start
+    logging.info(f"horizontal space between rails: {horizontal_space_between_rails} px")
+
+    if horizontal_space_between_rails < 15:
+        logging.info(f"too less/much difference between two rails -> no indication possible: {horizontal_space_between_rails} px")
+        return None
+
+    print(track_specific_x_to_y)
+
+    # build trapezoid by finding areas where there are pixels on one height
+    min_y = None
+    max_y = None
+
+    for x0, y0 in track_specific_x_to_y['left'].items():
+        # find x1 with the same y as y0 on the other track
+        x1 = next((x for x, y in track_specific_x_to_y['right'].items() if y == y0), None)
+        if x1 is None:
+            continue
+
+        if min_y is None:
+            min_y = (y0, x0, x1)
+        elif min_y[0] > y0:
+            min_y = (y0, x0, x1)
+
+        if max_y is None:
+            max_y = (y0, x0, x1)
+        elif max_y[0] < y0:
+            max_y = (y0, x0, x1)
+
+    if min_y is None or max_y is None:
+        return None
+
+
+    # draw trapezoid
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        pts = numpy.float32([[min_y[1], min_y[0]], [max_y[1], max_y[0]], [max_y[2], max_y[0]], [min_y[2], min_y[0]]])
+
+        rail_ties_view_height_width = 200
+        print((int(max_y[0]), int(min_y[0]), min_y[1], min_y[2]))
+        rail_ties_view = colored_image[int(max_y[0]):int(max_y[0]), min_y[1]:min_y[2]] # [top:top+cropped_height, right:right+cropped_width]
+
+        cv.imshow('rail ties', rail_ties_view)
+        cv.resizeWindow('rail ties', rail_ties_view_height_width * 2, rail_ties_view_height_width * 2)
+
+        target_pts = numpy.float32([[0,0], [0,rail_ties_view_height_width], [rail_ties_view_height_width, 0], [rail_ties_view_height_width,rail_ties_view_height_width]])
+        M = cv.getPerspectiveTransform(pts,target_pts)
+        dst = cv.warpPerspective(rail_ties_view, M, (rail_ties_view_height_width,rail_ties_view_height_width))
+        cv.imshow('dst', dst)
+
+        pts = pts.astype('int32').reshape((-1,1,2))
+        cv.polylines(contured_image, [pts], True, (255, 255), 3)
 
     if len(standard_deviations) == 0:
         return None
@@ -183,13 +234,6 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     mean_std_deviation = numpy.mean(standard_deviations)
     logging.debug(f'mean std deviation: {mean_std_deviation}')
-
-    horizontal_space_between_rails = right_track.x_start - left_track.x_start
-    logging.info(f"horizontal space between rails: {horizontal_space_between_rails} px")
-
-    # if horizontal_space_between_rails < 30 or horizontal_space_between_rails > 175:
-    #     logging.info(f"too less/much difference between two rails -> no indication possible: {horizontal_space_between_rails} px")
-    #     return None
 
     logging.debug(f'left: {left_track}')
     logging.debug(f'right: {right_track}')

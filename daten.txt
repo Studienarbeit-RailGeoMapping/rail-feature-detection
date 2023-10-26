@@ -1,0 +1,2 @@
+- verschiedene Witterungsverhältnisse
+- Verschiedene Zugbeeinflussungssysteme: PZB/LZB/ETCS
