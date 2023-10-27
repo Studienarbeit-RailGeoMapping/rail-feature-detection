@@ -225,7 +225,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
         cv.resizeWindow('rail ties', rail_ties_view_height_width * 3, rail_ties_view_height_width * 3)
         cv.moveWindow('rail ties', 500, 100)
 
-        warp_pts = numpy.float32([[min_y[1], min_y[0]], [min_y[2], min_y[0]], [max_y[1], max_y[0]], [max_y[2], max_y[0]]])
+        warp_pts = numpy.float32([[min_y[1], min_y[0]], [max_y[1], max_y[0]], [min_y[2], min_y[0]], [max_y[2], max_y[0]]])
         print(warp_pts)
         target_pts = numpy.float32([[0,0], [0, rail_ties_view_height_width], [rail_ties_view_height_width, 0], [rail_ties_view_height_width, rail_ties_view_height_width]])
         M = cv.getPerspectiveTransform(warp_pts, target_pts)
