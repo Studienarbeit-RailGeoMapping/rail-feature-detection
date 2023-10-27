@@ -49,7 +49,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     # read colored image to draw contures on
     colored_image = cv.imread(img_path)[top:top+cropped_height, right:right+cropped_width]
 
-    contured_image = colored_image
+    contured_image = colored_image.copy()
 
     def std_to_category(std: int):
         if std > 4:
@@ -209,22 +209,29 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     # draw trapezoid
     if logging.getLogger().isEnabledFor(logging.DEBUG):
-        pts = numpy.float32([[min_y[1], min_y[0]], [max_y[1], max_y[0]], [max_y[2], max_y[0]], [min_y[2], min_y[0]]])
+        pts = numpy.int32([[min_y[1], min_y[0]], [max_y[1], max_y[0]], [max_y[2], max_y[0]], [min_y[2], min_y[0]]])
+        pts = pts.reshape((-1,1,2))
+        cv.polylines(contured_image, [pts], True, (255, 255), 3)
 
         rail_ties_view_height_width = 200
-        print((int(max_y[0]), int(min_y[0]), min_y[1], min_y[2]))
-        rail_ties_view = colored_image[int(max_y[0]):int(max_y[0]), min_y[1]:min_y[2]] # [top:top+cropped_height, right:right+cropped_width]
+        print(min_y, max_y)
+        rail_ties_view = colored_image[int(min_y[0]):int(max_y[0]), max_y[1]:max_y[2]] # [top:top+cropped_height, right:right+cropped_width]
+
+        if rail_ties_view.shape[0] == 0 or rail_ties_view.shape[1] == 0:
+            print("trapezoid of height 0")
+            return None
 
         cv.imshow('rail ties', rail_ties_view)
-        cv.resizeWindow('rail ties', rail_ties_view_height_width * 2, rail_ties_view_height_width * 2)
+        cv.resizeWindow('rail ties', rail_ties_view_height_width * 3, rail_ties_view_height_width * 3)
+        cv.moveWindow('rail ties', 500, 100)
 
-        target_pts = numpy.float32([[0,0], [0,rail_ties_view_height_width], [rail_ties_view_height_width, 0], [rail_ties_view_height_width,rail_ties_view_height_width]])
-        M = cv.getPerspectiveTransform(pts,target_pts)
-        dst = cv.warpPerspective(rail_ties_view, M, (rail_ties_view_height_width,rail_ties_view_height_width))
+        warp_pts = numpy.float32([[min_y[1], min_y[0]], [min_y[2], min_y[0]], [max_y[1], max_y[0]], [max_y[2], max_y[0]]])
+        print(warp_pts)
+        target_pts = numpy.float32([[0,0], [0, rail_ties_view_height_width], [rail_ties_view_height_width, 0], [rail_ties_view_height_width, rail_ties_view_height_width]])
+        M = cv.getPerspectiveTransform(warp_pts, target_pts)
+        dst = cv.warpPerspective(colored_image, M, (rail_ties_view_height_width,rail_ties_view_height_width))
         cv.imshow('dst', dst)
-
-        pts = pts.astype('int32').reshape((-1,1,2))
-        cv.polylines(contured_image, [pts], True, (255, 255), 3)
+        cv.moveWindow('dst', 600, 100)
 
     if len(standard_deviations) == 0:
         return None
