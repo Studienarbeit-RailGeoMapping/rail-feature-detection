@@ -51,16 +51,18 @@ for path, expected_result in labels.items():
 
                     if expected_direction != direction:
                         test_results["failed_direction"] += 1
-                        test_failed_directions.append(path)
+                        test_failed_directions.append({"path": path, "expected": expected_result, "actual": result})
 
                     if expected_curve_strength != curve_strength:
                         test_results["failed_curve_strength"] += 1
+                        test_failed_directions.append({"path": path, "expected": expected_result, "actual": result})
                 else:
                     test_results["failed_direction"] += 1
-                    test_failed_directions.append(path)
+                    test_failed_directions.append({"path": path, "expected": expected_result, "actual": result})
+
             else:
                 test_results["failed_direction"] += 1
-                test_failed_directions.append(path)
+                test_failed_directions.append({"path": path, "expected": expected_result, "actual": result})
 
 test_duration = time.time() - test_start_time
 
@@ -69,4 +71,4 @@ print(test_results)
 
 print(f'\nTests took {test_duration:.3} s')
 
-print(f'Failed images: {test_failed_directions}')
+# print(f'Failed images: {test_failed_directions}')

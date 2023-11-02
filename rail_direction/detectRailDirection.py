@@ -35,6 +35,10 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     img = cv.adaptiveThreshold(
         img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 7, 17)
 
+    kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel
+    img = cv.dilate(img, kernel, iterations=1)
+    img = cv.erode(img, kernel, iterations=1)
+
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         cv.imshow('img', img)
         cv.waitKey(0)
@@ -51,11 +55,16 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     contured_image = colored_image.copy()
 
-    def std_to_category(std: int):
-        if std > 4:
+    cv.imshow('img', contured_image)
+
+
+    def std_to_category(std):
+        tolerance = 0.2
+
+        if std > 4 + tolerance:
             return 'sharp'
 
-        if std > 1:
+        if std > 1 + tolerance:
             return 'slight'
 
         return 'straight'
@@ -86,8 +95,8 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     for key in range(len(contours)):
         x_start, y_start, x_width, y_height = cv.boundingRect(contours[key])
 
-        # get all contours that touch the lower 5 % and are not to far away from center
-        if y_start + y_height > cropped_height * 0.9:
+        # get all contours that touch the lower 10 % and are not to far away from center
+        if y_start + y_height > cropped_height * 0.9 and x_start + x_width < cropped_width * 0.9:
             line = LineBoundingRect(x_start, y_start, x_width, y_height, contours[key], key)
             # logging.debug(line.get_area())
 
@@ -162,26 +171,30 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
             change_rates.append(change_rate)
 
         if track == track_with_more_contours:
-            if track_specific_x_to_y[key][max_y] - track_specific_x_to_y[key][min_y] < 0:
+            y_diff_of_track = track_specific_x_to_y[key][max_y] - track_specific_x_to_y[key][min_y]
+
+            logging.debug(f'y diff of track with more contours: {y_diff_of_track}')
+
+            if y_diff_of_track < 0:
                 rail_direction = 'right'
             else:
                 rail_direction = 'left'
 
         if len(change_rates) > 1:
-            logging.debug(change_rates)
+            logging.debug("change rates " + str(change_rates))
             std = numpy.std(change_rates, ddof=1)
-            logging.debug(std)
+            logging.debug("std of change rate " + str(std))
 
             standard_deviations.append(std)
 
     horizontal_space_between_rails = right_track.x_start - left_track.x_start
     logging.info(f"horizontal space between rails: {horizontal_space_between_rails} px")
 
-    if horizontal_space_between_rails < 15:
+    if horizontal_space_between_rails < 20 or horizontal_space_between_rails > 150:
         logging.info(f"too less/much difference between two rails -> no indication possible: {horizontal_space_between_rails} px")
         return None
 
-    print(track_specific_x_to_y)
+    logging.debug(track_specific_x_to_y)
 
     # build trapezoid by finding areas where there are pixels on one height
     min_y = None
@@ -204,6 +217,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
             max_y = (y0, x0, x1)
 
     if min_y is None or max_y is None:
+        logging.info("couldn't find parallel part for trapezoid")
         return None
 
 
@@ -214,7 +228,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
         cv.polylines(contured_image, [pts], True, (255, 255), 3)
 
         rail_ties_view_height_width = 200
-        print(min_y, max_y)
+        rail_ties_view_padding = 0
         rail_ties_view = colored_image[int(min_y[0]):int(max_y[0]), max_y[1]:max_y[2]] # [top:top+cropped_height, right:right+cropped_width]
 
         if rail_ties_view.shape[0] == 0 or rail_ties_view.shape[1] == 0:
@@ -223,10 +237,14 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
         cv.imshow('rail ties', rail_ties_view)
         cv.resizeWindow('rail ties', rail_ties_view_height_width * 3, rail_ties_view_height_width * 3)
-        cv.moveWindow('rail ties', 500, 100)
+        cv.moveWindow('rail ties', 400, 100)
 
-        warp_pts = numpy.float32([[min_y[1], min_y[0]], [max_y[1], max_y[0]], [min_y[2], min_y[0]], [max_y[2], max_y[0]]])
-        print(warp_pts)
+        warp_pts = numpy.float32([
+            [min_y[1] - rail_ties_view_padding, min_y[0]],
+            [max_y[1] - rail_ties_view_padding, max_y[0]],
+            [min_y[2] + rail_ties_view_padding, min_y[0]],
+            [max_y[2] + rail_ties_view_padding, max_y[0]]
+        ])
         target_pts = numpy.float32([[0,0], [0, rail_ties_view_height_width], [rail_ties_view_height_width, 0], [rail_ties_view_height_width, rail_ties_view_height_width]])
         M = cv.getPerspectiveTransform(warp_pts, target_pts)
         dst = cv.warpPerspective(colored_image, M, (rail_ties_view_height_width,rail_ties_view_height_width))
@@ -253,27 +271,27 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         cv.putText(contured_image, label, (10, 40), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
-        cv.imshow('img', contured_image)
 
     return label
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
+    img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
 
     while True:
-        img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
-        # img_path = '../labeled_images/milestones/JPEGImages/1692968178-1.jpg'
+        # img_path = '../labeled_images/milestones/JPEGImages/1692817253.jpg'
         result = get_rail_direction_from_path(img_path)
 
         pressed_key = cv.waitKey(0)
+        print(pressed_key)
 
         label = None
         # slight right (Right)
-        if pressed_key == 2:
+        if pressed_key == 3:
             label = 'slight_right'
         # slight left (Left)
-        elif pressed_key == 3:
+        elif pressed_key == 2:
             label = 'slight_left'
         # straight (Up)
         elif pressed_key == 0:
@@ -281,16 +299,18 @@ if __name__ == '__main__':
         # sharp left (A)
         elif pressed_key == 97:
             label = 'sharp_left'
-        # sharp left (B)
+        # sharp left (S)
         elif pressed_key == 115:
             label = 'sharp_right'
         elif pressed_key == ord('q'):
             sys.exit(0)
+        elif pressed_key == ord('r'):
+            img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
         else:
             logging.info(f'unknown key pressed: keycode={pressed_key}')
 
-        if result is not None and label is not None:
+        if label is not None:
             with open("../labeled_images/directions/labelmap.txt", "a+") as myfile:
                 myfile.write(f"{img_path}:{label}\n")
-                logging.info(f'labeled as {label}…\n')
-
+                logging.info(f'\nlabeled as {label}…\n')
+                img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
