@@ -5,6 +5,7 @@ import math
 import numpy
 import random as rng
 import sys
+import os
 
 def final_rail_direction_from_directions(directions: list) -> str|None:
     [first, second] = directions
@@ -17,23 +18,27 @@ def final_rail_direction_from_directions(directions: list) -> str|None:
 def get_rail_direction_from_path(img_path: str) -> str|None:
     logging.debug(f'showing {img_path}')
 
-    img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+    img = cv.imread(img_path)
 
-    image_height, image_width = img.shape
+    image_height, image_width, _color_channels = img.shape
 
     # crop image to only include center
-    cropped_width = 275
-    cropped_height = 300
+    cropped_width = 500
+    cropped_height = 500
 
     right = int((image_width - cropped_width) / 2)
     top = int((image_height - cropped_height) / 2)
 
     img = img[top:top+cropped_height, right:right+cropped_width]
+    img = cv.resize(img, (int(cropped_width / 2), int(cropped_height / 2)), interpolation=cv.INTER_LINEAR)
+    img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    img = cv.convertScaleAbs(img, 2, 2)
 
     img = cv.medianBlur(img, 3)
 
-    img = cv.adaptiveThreshold(
-        img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 7, 17)
+    # img = cv.adaptiveThreshold(
+    #     img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 7, 17)
 
     kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel
     img = cv.dilate(img, kernel, iterations=1)
@@ -277,7 +282,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
+    img_path = rng.choice(glob('../labeled_images/milestones/*.jpg'))
 
     while True:
         # img_path = '../labeled_images/milestones/JPEGImages/1692817253.jpg'
@@ -305,12 +310,14 @@ if __name__ == '__main__':
         elif pressed_key == ord('q'):
             sys.exit(0)
         elif pressed_key == ord('r'):
-            img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
+            img_path = rng.choice(glob('../labeled_images/milestones/*.jpg'))
         else:
             logging.info(f'unknown key pressed: keycode={pressed_key}')
 
         if label is not None:
             with open("../labeled_images/directions/labelmap.txt", "a+") as myfile:
-                myfile.write(f"{img_path}:{label}\n")
+                new_image_path = f'../labeled_images/milestones/JPEGImages/{os.path.basename(img_path)}'
+                os.rename(img_path, new_image_path)
+                myfile.write(f"{new_image_path}:{label}\n")
                 logging.info(f'\nlabeled as {label}…\n')
-                img_path = rng.choice(glob('../labeled_images/milestones/JPEGImages/*.jpg'))
+                img_path = rng.choice(glob('../labeled_images/milestones/*.jpg'))
