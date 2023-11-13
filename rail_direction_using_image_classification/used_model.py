@@ -59,7 +59,7 @@ def preprocess_input(img) -> torch.Tensor:
     img = cv.resize(img, (int(CROPPED_WIDTH / 2), int(CROPPED_HEIGHT / 2)), interpolation=cv.INTER_LINEAR)
     img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-    img = cv.convertScaleAbs(img, 2, 2)
+    # img = cv.convertScaleAbs(img, 2, 2)
 
     img = cv.medianBlur(img, 3)
 

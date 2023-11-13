@@ -33,7 +33,7 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     img = cv.resize(img, (int(cropped_width / 2), int(cropped_height / 2)), interpolation=cv.INTER_LINEAR)
     img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-    img = cv.convertScaleAbs(img, 2, 2)
+    # img = cv.convertScaleAbs(img, 2, 2)
 
     img = cv.medianBlur(img, 3)
 
