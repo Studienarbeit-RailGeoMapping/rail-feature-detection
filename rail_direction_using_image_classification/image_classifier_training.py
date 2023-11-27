@@ -145,6 +145,7 @@ def main(rank, world_size):
                 A.RandomShadow(p=0.2),
                 A.RandomFog(p=0.2),
                 A.RandomRain(p=0.2),
+                A.Rotate(p=0.5, limit=5),
             ])
 
         def __len__(self):
