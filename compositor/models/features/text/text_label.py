@@ -2,7 +2,10 @@ from ..label import Label
 import cv2 as cv
 
 class TextLabel(Label):
-    COLORS = [(45,67,182), (136,197,67), (244,226,85), (169,73,19)]
+    COLORS = [
+        (45, 67, 182), (136, 197, 67), (244, 226, 85),
+        (169, 73, 19), (213, 144, 218), (218, 126, 125)
+    ]
 
     def __init__(self, name, value=False) -> None:
         self.name = name

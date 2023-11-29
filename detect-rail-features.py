@@ -28,8 +28,12 @@ if __name__ == "__main__":
     # seek to random position
     vidObj.set(cv.CAP_PROP_POS_FRAMES, frame_pos)
 
+    fps = vidObj.get(cv.CAP_PROP_FPS)
+
     for detector in detectors:
-        detector.init(fps=vidObj.get(cv.CAP_PROP_FPS))
+        detector.init(fps=fps)
+
+    logging.info(f"Playing {video_file_path} at {frame_pos} ({fps} fps)…")
 
     with ProcessPoolExecutor() as executor:
         frame_count = 0
@@ -65,6 +69,6 @@ if __name__ == "__main__":
             if pressed_key == ord('q'):
                 break
             elif pressed_key == ord('s'):
-                print(f'Saving frame {frame_count}...')
+                logging.debug(f'Saving frame {frame_count}...')
                 cv.imwrite(f'labeled_images/milestones/frame-{frame_count}-{trunc(time.time())}.jpg', frame)
 
