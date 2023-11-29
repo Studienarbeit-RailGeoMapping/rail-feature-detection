@@ -8,9 +8,9 @@ import cv2 as cv
 import time
 from math import trunc
 import numpy
-from used_model import CROPPED_WIDTH, CROPPED_HEIGHT, preprocess_input, CLASSES, load_snapshot
+from used_model import preprocess_input, CLASSES, load_snapshot, MODEL_INPUT_WIDTH_HEIGHT
 
-model = MLP(int(CROPPED_WIDTH/2 * CROPPED_HEIGHT/2), len(CLASSES))
+model = MLP(MODEL_INPUT_WIDTH_HEIGHT ** 2, len(CLASSES))
 
 print("Loading snapshot…")
 
@@ -27,7 +27,7 @@ model.eval()
 success = True
 
 vidObj = cv.VideoCapture(rng.choice(glob('../*.mp4')))
-# vidObj = cv.VideoCapture('../murgtalbahn.mp4')
+# vidObj = cv.VideoCapture('../schwarzwaldbahn-karlsruhe-konstanz.mp4')
 # seek to random position
 vidObj.set(cv.CAP_PROP_POS_FRAMES, rng.randint(0, vidObj.get(cv.CAP_PROP_FRAME_COUNT)))
 

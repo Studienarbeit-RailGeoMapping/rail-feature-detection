@@ -23,8 +23,8 @@ def get_rail_direction_from_path(img_path: str) -> str|None:
     image_height, image_width, _color_channels = img.shape
 
     # crop image to only include center
-    cropped_width = 500
-    cropped_height = 500
+    cropped_width = 600
+    cropped_height = 600
 
     right = int((image_width - cropped_width) / 2)
     top = int((image_height - cropped_height) / 2)

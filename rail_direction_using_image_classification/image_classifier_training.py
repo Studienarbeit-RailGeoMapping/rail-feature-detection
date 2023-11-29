@@ -11,7 +11,7 @@ from tqdm.notebook import trange, tqdm
 import os
 import albumentations as A
 
-from used_model import CROPPED_WIDTH, CROPPED_HEIGHT, BATCH_SIZE, CLASSES, CLASS_LABEL_TO_INDEX, load_snapshot
+from used_model import CROPPED_WIDTH, CROPPED_HEIGHT, BATCH_SIZE, CLASSES, CLASS_LABEL_TO_INDEX, load_snapshot, MODEL_INPUT_WIDTH_HEIGHT
 
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -145,7 +145,7 @@ def main(rank, world_size):
                 A.RandomShadow(p=0.2),
                 A.RandomFog(p=0.2),
                 A.RandomRain(p=0.2),
-                A.Rotate(p=0.5, limit=5),
+                A.Rotate(p=0.5, limit=4),
             ])
 
         def __len__(self):
@@ -183,7 +183,7 @@ def main(rank, world_size):
 
     from used_model import MLP
 
-    model = MLP(int((CROPPED_WIDTH/2 * CROPPED_HEIGHT/2)), len(CLASSES))
+    model = MLP((MODEL_INPUT_WIDTH_HEIGHT ** 2), len(CLASSES))
 
     best_valid_loss = float('inf')
     best_accuracy = 0.0

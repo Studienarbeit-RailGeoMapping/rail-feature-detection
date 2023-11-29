@@ -4,9 +4,11 @@ import numpy
 import albumentations as A
 import torchvision.transforms as transforms
 
-CROPPED_WIDTH = 500
-CROPPED_HEIGHT = 500
+CROPPED_WIDTH = 600
+CROPPED_HEIGHT = 600
 BATCH_SIZE = 64
+
+MODEL_INPUT_WIDTH_HEIGHT = 250
 
 
 CLASSES = ['sharp_left', 'slight_left', 'straight', 'slight_right', 'sharp_right']
@@ -48,6 +50,9 @@ class MLP(torch.nn.Module):
 
         return y_pred
 
+to_tensor = transforms.ToTensor()
+kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel to connect split lines
+
 def preprocess_input(img) -> torch.Tensor:
     image_height, image_width, _color_channels = img.shape
 
@@ -57,7 +62,7 @@ def preprocess_input(img) -> torch.Tensor:
 
     img = img[top:top+CROPPED_HEIGHT, right:right+CROPPED_WIDTH]
 
-    img = cv.resize(img, (int(CROPPED_WIDTH / 2), int(CROPPED_HEIGHT / 2)), interpolation=cv.INTER_LINEAR)
+    img = cv.resize(img, (MODEL_INPUT_WIDTH_HEIGHT, MODEL_INPUT_WIDTH_HEIGHT), interpolation=cv.INTER_LINEAR)
     img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     # img = cv.convertScaleAbs(img, 2, 2)
@@ -67,16 +72,15 @@ def preprocess_input(img) -> torch.Tensor:
     # img = cv.adaptiveThreshold(
     #     img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 7, 17)
 
-    kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel to connect split lines
     img = cv.dilate(img, kernel, iterations=1)
     img = cv.erode(img, kernel, iterations=1)
 
-    tensor = transforms.ToTensor()(img)
+    tensor = to_tensor(img)
     return tensor
 
 
-def load_snapshot(model):
-    snapshot = torch.load("saved-model.pt")
+def load_snapshot(model, filepath="saved-model.pt"):
+    snapshot = torch.load(filepath)
     model.load_state_dict(snapshot["MODEL_STATE"])
 
     return snapshot["GENERATION"], model, snapshot["EPOCHS_RUN"], snapshot["LOSS"], snapshot["TEST_ACCURACY"]
