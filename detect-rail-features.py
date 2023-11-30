@@ -1,28 +1,28 @@
-from concurrent.futures import ProcessPoolExecutor
-import logging
-from math import trunc
-import time
-from compositor.detectors.in_tunnel import InTunnelDetector
-from compositor.detectors.rail_direction import RailDirectionDetector
-import cv2 as cv
-from glob import glob
-import random as rng
-import concurrent
-
 if __name__ == "__main__":
     print("Booting up compositor…")
+
+    from concurrent.futures import ProcessPoolExecutor
+    import logging
+    from math import trunc
+    import time
+    from compositor.detectors.in_tunnel import InTunnelDetector
+    from compositor.detectors.rail_direction import RailDirectionDetector
+    import cv2 as cv
+    from glob import glob
+    import random as rng
+    import concurrent
 
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 
     # load detectors
     detectors = [InTunnelDetector(), RailDirectionDetector()]
 
-    # video_file_path = 'murgtalbahn.mp4'
     video_file_path = rng.choice(glob('./*.mp4'))
+    # video_file_path = 'schwarzwaldbahn-karlsruhe-konstanz.mp4'
 
     vidObj = cv.VideoCapture(video_file_path)
 
-    # frame_pos = 128500
+    # frame_pos = 303569
     frame_pos = rng.randint(0, vidObj.get(cv.CAP_PROP_FRAME_COUNT))
 
     # seek to random position
