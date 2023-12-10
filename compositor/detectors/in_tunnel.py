@@ -17,6 +17,6 @@ class InTunnelDetector(BaseDetector):
         img_size = frame.shape[0] * frame.shape[1]
         ratio_of_white_pixels = (img_size - non_zero) / img_size
 
-        return [BooleanFeature("In Tunnel", ratio_of_white_pixels < 0.15)]
+        return [BooleanFeature("In Tunnel", ratio_of_white_pixels < 0.14)]
 
 # TODO: Write tests with example images

@@ -1,5 +1,5 @@
 if __name__ == "__main__":
-    print("Booting up compositor…")
+    print("Booting compositor…")
 
     from concurrent.futures import ProcessPoolExecutor
     import logging
@@ -15,10 +15,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 
     # load detectors
-    detectors = [InTunnelDetector(), RailDirectionDetector()]
+    detectors = [
+        InTunnelDetector(),
+        RailDirectionDetector(),
+    ]
 
     video_file_path = rng.choice(glob('./*.mp4'))
-    # video_file_path = 'schwarzwaldbahn-karlsruhe-konstanz.mp4'
+    # video_file_path = 'ice4.mp4'
 
     vidObj = cv.VideoCapture(video_file_path)
 
@@ -45,7 +48,6 @@ if __name__ == "__main__":
                 break
 
             futures = [executor.submit(detector.detect_features, frame) for detector in detectors]
-
             labels = []
 
             for future in concurrent.futures.as_completed(futures):
@@ -58,12 +60,14 @@ if __name__ == "__main__":
 
             y_start = 30
 
+            image = frame.copy()
+
             for label in labels:
-                frame = label.draw_to_frame(frame, expected_y_start=y_start)
-                y_start += 35
+                image = label.draw_to_frame(image, expected_y_start=y_start)
+                y_start += 30
 
             # show the frame
-            cv.imshow('frame', frame)
+            cv.imshow('frame', image)
             pressed_key = cv.waitKey(1)
 
             if pressed_key == ord('q'):

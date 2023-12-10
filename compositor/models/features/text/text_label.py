@@ -7,7 +7,7 @@ class TextLabel(Label):
         (169, 73, 19), (213, 144, 218), (218, 126, 125)
     ]
 
-    def __init__(self, name, value=False) -> None:
+    def __init__(self, name, value='') -> None:
         self.name = name
         self.value = value
 
