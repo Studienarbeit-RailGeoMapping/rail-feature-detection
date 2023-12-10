@@ -10,6 +10,9 @@ class InTunnelDetector(BaseDetector):
         super().init(fps)
 
     def detect_features(self, frame):
+        # TODO: Test whether looking at only a few pixels at the very top center
+        # improves performance
+
         ret, black_and_white = cv.threshold(cv.cvtColor(
             frame, cv.COLOR_BGR2GRAY), 100, 255, cv.THRESH_BINARY_INV)
         non_zero = cv.countNonZero(black_and_white)

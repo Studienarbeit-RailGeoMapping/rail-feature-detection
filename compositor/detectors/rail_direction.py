@@ -1,5 +1,6 @@
 import numpy
 from compositor.models.features.text.text_feature import TextFeature
+from compositor.models.features.confidence.confidence_feature import ConfidenceFeature
 from rail_direction_using_image_classification.used_model import preprocess_input, CLASSES
 from .base import BaseDetector
 import logging
@@ -38,7 +39,7 @@ class RailDirectionDetector(BaseDetector):
         probabilities = torch.softmax(outputs, dim=1)
 
         # Get the predicted class labels
-        _, predicted_label = torch.max(probabilities, dim=1)
+        probability, predicted_label = torch.max(probabilities, dim=1)
         predicted_label = predicted_label.item()
 
         self.directions_of_last_second.pop(0)
@@ -46,4 +47,7 @@ class RailDirectionDetector(BaseDetector):
 
         avg_direction = CLASSES[round(numpy.nanmean(self.directions_of_last_second))]
 
-        return [TextFeature("Rail direction", avg_direction)]
+        return [
+            TextFeature("Rail direction", avg_direction),
+            ConfidenceFeature("Rail direction", probability)
+        ]

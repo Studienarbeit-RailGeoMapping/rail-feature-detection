@@ -2,7 +2,7 @@ import cv2 as cv
 from compositor.detectors.in_tunnel import InTunnelDetector
 
 def inTunnelDetectorTest():
-    print('-- TEST InTunnelDetector --\n')
+    print('\n-- TEST InTunnelDetector --\n')
 
     test_images = {
         'labeled_images/milestones/JPEGImages/frame-92-1702174287.jpg': False,
@@ -24,7 +24,7 @@ def inTunnelDetectorTest():
         else:
             print('.', end='', flush=True)
 
-    print(f'\nFailures: {failures}')
+    print(f'\n\nFailures: {failures}')
 
     print('\n-- TEST END InTunnelDetector --\n')
 
