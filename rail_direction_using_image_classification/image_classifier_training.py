@@ -229,5 +229,5 @@ def main(rank, world_size):
                 save_snapshot(generation + 1, model, epochs+epoch+1, best_valid_loss, valid_acc)
 
 if __name__ == "__main__":
-    world_size = 8 # Define the number of processes
+    world_size = 5 # Define the number of processes
     mp.spawn(main, args=(world_size,), nprocs=world_size)

@@ -21,7 +21,7 @@ class RailDirectionDetector(BaseDetector):
         )
 
         self.model = model
-        self.directions_of_last_second = [float('nan')] * int(fps)
+        self.directions_of_last_two_second = [float('nan')] * (int(fps) * 2)
 
         logger.info(
             f"Stats of used model: GEN {generation}, EPOCHS {epochs}, VAL. LOSS: {loss:.3f}, VAL. ACCURACY: {accuracy*100:.2f} %"
@@ -42,10 +42,10 @@ class RailDirectionDetector(BaseDetector):
         probability, predicted_label = torch.max(probabilities, dim=1)
         predicted_label = predicted_label.item()
 
-        self.directions_of_last_second.pop(0)
-        self.directions_of_last_second.append(predicted_label)
+        self.directions_of_last_two_second.pop(0)
+        self.directions_of_last_two_second.append(predicted_label)
 
-        avg_direction = CLASSES[round(numpy.nanmean(self.directions_of_last_second))]
+        avg_direction = CLASSES[round(numpy.nanmean(self.directions_of_last_two_second))]
 
         return [
             TextFeature("Rail direction", avg_direction),
