@@ -75,7 +75,7 @@ class CatenaryDetector(BaseDetector):
 
         last_results.append(result)
 
-        return [BooleanFeature("Has Catenary", round(numpy.mean(last_results)) == 1)]
+        return [BooleanFeature("Catenary detected", round(numpy.mean(last_results)) == 1)]
 
     def is_detected_line_possible_catenary(self, start, end):
         if abs(start[0]-end[0]) > 25:

@@ -16,3 +16,8 @@ class BooleanLabel(Label):
         cv.putText(frame, str(self.value), (10 + width_of_label, expected_y_start), cv.FONT_HERSHEY_SIMPLEX, 1, color_of_value, 2, cv.LINE_AA)
 
         return frame
+
+    def to_dict(self):
+        return {
+            self.name: self.value
+        }

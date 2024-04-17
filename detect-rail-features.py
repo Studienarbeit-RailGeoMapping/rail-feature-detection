@@ -24,7 +24,7 @@ if __name__ == "__main__":
     ]
 
     video_file_path = rng.choice(glob('./*.mp4'))
-    # video_file_path = 'führerstandsmitfahrt-diesel-freudenstadt-hausach.mp4'
+    video_file_path = 'führerstandsmitfahrt-diesel-freudenstadt-hausach.mp4'
 
     vidObj = cv.VideoCapture(video_file_path)
 
@@ -40,6 +40,8 @@ if __name__ == "__main__":
         detector.init(fps=fps)
 
     logging.info(f"Playing {video_file_path} at {frame_pos} ({fps} fps)…")
+
+    last_state = None
 
     with ProcessPoolExecutor() as executor:
         frame_count = 0
@@ -65,9 +67,22 @@ if __name__ == "__main__":
 
             image = frame.copy()
 
+            detected_features = {}
+
             for label in labels:
                 image = label.draw_to_frame(image, expected_y_start=y_start)
                 y_start += 30
+
+                detected_features.update(label.to_dict())
+
+            current_state = {
+                "frame": frame_count,
+                "detected_features": detected_features
+            }
+
+            if last_state is None or last_state["detected_features"] != detected_features:
+                last_state = current_state
+                print(last_state)
 
             # show the frame
             cv.imshow('frame', image)
