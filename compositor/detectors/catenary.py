@@ -27,14 +27,15 @@ class CatenaryDetector(BaseDetector):
 
         # increase contrast using lookup-table
         # catenary_view = cv.addWeighted(catenary_view, 1.5, catenary_view, 0, 0)
-        # cv.imshow("catenary view contrast", catenary_view)
-        # cv.waitKey(1)
 
         # catenary_view = cv.medianBlur(catenary_view, 5)
 
         lower = (0,0,0)
-        upper = (220,220,220)
+        upper = (220, 220, 220)
         catenary_view_black_white = cv.inRange(catenary_view, lower, upper)
+
+        cv.imshow("catenary view black/white", catenary_view_black_white)
+        cv.waitKey(1)
 
         # detect noise
         kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel to connect split lines
@@ -46,14 +47,14 @@ class CatenaryDetector(BaseDetector):
         noise = cv.erode(noise, kernel_el, (-1, -1))
         noise = cv.dilate(noise, kernel_el, (-1, -1))
 
-        # cv.imshow("detected noise", noise)
+        cv.imshow("detected noise", noise)
+        cv.waitKey(1)
 
         # remove noise from image
         catenary_view_black_white[noise == 255] = 0
 
-
-        # cv.imshow("catenary view thresholding", catenary_view_black_white)
-        # cv.waitKey(1)
+        cv.imshow("catenary view thresholding", catenary_view_black_white)
+        cv.waitKey(1)
 
         # Apply edge detection method on the image
         # edges = cv.Canny(cv.merge((catenary_view, catenary_view, catenary_view)), 50, 150, apertureSize=3)
@@ -68,8 +69,10 @@ class CatenaryDetector(BaseDetector):
 
                 if self.is_detected_line_possible_catenary((x1, y1), (x2, y2)):
                     detected_lines += 1
-                    # cv.line(catenary_view,(x1,y1),(x2,y2),(0,0,255),2)
+                    cv.line(catenary_view,(x1,y1),(x2,y2),(0,0,255),2)
 
+        cv.imshow("catenary view", catenary_view)
+        cv.waitKey(1)
 
         result = detected_lines > 0
 
@@ -78,8 +81,13 @@ class CatenaryDetector(BaseDetector):
         return [BooleanFeature("Catenary detected", round(numpy.mean(last_results)) == 1)]
 
     def is_detected_line_possible_catenary(self, start, end):
+        # too horizontal
         if abs(start[0]-end[0]) > 25:
             return False
+
+        # too long (should detect GSM-R masts such as around frame 62700 in diesel video)
+        # if abs(start[1]-end[1]) > 20:
+        #     return False
 
         return True
 
