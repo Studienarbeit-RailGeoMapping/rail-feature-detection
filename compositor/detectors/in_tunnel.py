@@ -5,10 +5,11 @@ import cv2 as cv
 
 logger = logging.getLogger(__name__)
 
-TOP_AREA_WIDTH = 50
-TOP_AREA_HEIGHT = 50
+TOP_AREA_WIDTH = 250
+TOP_AREA_HEIGHT = 250
 PADDING_TOP_AREA = 25
 
+DEBUG = False
 class InTunnelDetector(BaseDetector):
     def init(self, fps):
         super().init(fps)
@@ -28,6 +29,12 @@ class InTunnelDetector(BaseDetector):
         img_size = TOP_AREA_HEIGHT * TOP_AREA_WIDTH
         ratio_of_white_pixels = (img_size - non_zero) / img_size
 
-        return [BooleanFeature("In Tunnel", ratio_of_white_pixels < 0.3)]
+        if DEBUG:
+            print(ratio_of_white_pixels)
+            cv.imshow('frame', frame)
+            cv.imshow('in_tunnel', black_and_white)
+            cv.waitKey(0)
+
+        return [BooleanFeature("In Tunnel", ratio_of_white_pixels < 0.25)]
 
 # TODO: Write tests with example images

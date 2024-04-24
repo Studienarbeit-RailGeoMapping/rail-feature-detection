@@ -23,6 +23,15 @@ def inTunnelDetectorTest():
         'labeled_images/milestones/JPEGImages/frame-77126-1713956321.jpg': False,
         'labeled_images/milestones/JPEGImages/frames1.jpg': False,
         'labeled_images/milestones/JPEGImages/frames2.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129598-1713958553.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129604-1713958553.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129614-1713958554.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129619-1713958554.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129626-1713958554.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129642-1713958555.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129646-1713958555.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129651-1713958555.jpg': False,
+        'labeled_images/milestones/JPEGImages/frame-129676-1713958556.jpg': False,
     }
 
     detector = InTunnelDetector()
