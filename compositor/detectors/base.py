@@ -13,5 +13,5 @@ class BaseDetector():
 
     @classmethod
     @abstractmethod
-    def detect_features(self):
+    def detect_features(self, frame):
         pass

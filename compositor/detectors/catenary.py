@@ -1,4 +1,4 @@
-from compositor.models.features.boolean.boolean_feature import BooleanFeature
+from compositor.models.features.text.text_feature import TextFeature
 from .base import BaseDetector
 import logging
 import cv2 as cv
@@ -12,6 +12,8 @@ TOP_AREA_WITH_CATENARY_HEIGHT = 250
 PADDING_TOP_AREA = 25
 
 last_results = collections.deque(maxlen=100)
+
+DEBUG = False
 
 class CatenaryDetector(BaseDetector):
     def init(self, fps):
@@ -34,27 +36,35 @@ class CatenaryDetector(BaseDetector):
         upper = (220, 220, 220)
         catenary_view_black_white = cv.inRange(catenary_view, lower, upper)
 
-        cv.imshow("catenary view black/white", catenary_view_black_white)
-        cv.waitKey(1)
+        if DEBUG:
+            cv.imshow("catenary view black/white", catenary_view_black_white)
+            cv.waitKey(1)
 
         # detect noise
         kernel = numpy.ones((3, 1), numpy.uint8) # vertical kernel to connect split lines
         noise = cv.dilate(catenary_view_black_white, kernel, iterations=1)
         noise = cv.erode(catenary_view_black_white, kernel, iterations=1)
 
-        kernel_size = (6, 6) # should roughly have the size of the elements you want to remove
+        kernel_size = (7, 6) # should roughly have the size of the elements you want to remove
         kernel_el = cv.getStructuringElement(cv.MORPH_RECT, kernel_size)
         noise = cv.erode(noise, kernel_el, (-1, -1))
         noise = cv.dilate(noise, kernel_el, (-1, -1))
 
-        cv.imshow("detected noise", noise)
-        cv.waitKey(1)
+        if DEBUG:
+            cv.imshow("detected noise", noise)
+            cv.waitKey(1)
+
+        percentage_of_noise = ((noise == 255).sum() / (TOP_AREA_WITH_CATENARY_WIDTH * TOP_AREA_WITH_CATENARY_HEIGHT))
+
+        if percentage_of_noise > 0.95:
+            return [TextFeature("Catenary detected", "too much noise")]
 
         # remove noise from image
         catenary_view_black_white[noise == 255] = 0
 
-        cv.imshow("catenary view thresholding", catenary_view_black_white)
-        cv.waitKey(1)
+        if DEBUG:
+            cv.imshow("catenary view thresholding", catenary_view_black_white)
+            cv.waitKey(1)
 
         # Apply edge detection method on the image
         # edges = cv.Canny(cv.merge((catenary_view, catenary_view, catenary_view)), 50, 150, apertureSize=3)
@@ -71,18 +81,21 @@ class CatenaryDetector(BaseDetector):
                     detected_lines += 1
                     cv.line(catenary_view,(x1,y1),(x2,y2),(0,0,255),2)
 
-        cv.imshow("catenary view", catenary_view)
-        cv.waitKey(1)
+        if DEBUG:
+            cv.imshow("catenary view", catenary_view)
+            cv.waitKey(1)
 
         result = detected_lines > 0
 
         last_results.append(result)
 
-        return [BooleanFeature("Catenary detected", round(numpy.mean(last_results)) == 1)]
+        return [TextFeature("Catenary detected", str(round(numpy.mean(last_results)) == 1))]
 
     def is_detected_line_possible_catenary(self, start, end):
-        # too horizontal
-        if abs(start[0]-end[0]) > 25:
+        x_width = abs(start[0]-end[0])
+
+        # completely straight line or too wide to be a catenary
+        if x_width == 0 or x_width > 10:
             return False
 
         # too long (should detect GSM-R masts such as around frame 62700 in diesel video)

@@ -18,18 +18,20 @@ if __name__ == "__main__":
 
     # load detectors
     detectors = [
-        CatenaryDetector(),
+        # CatenaryDetector(),
         InTunnelDetector(),
-        RailDirectionDetector(),
+        # RailDirectionDetector(),
     ]
 
     video_file_path = rng.choice(glob('./*.mp4'))
     video_file_path = 'führerstandsmitfahrt-diesel-freudenstadt-hausach.mp4'
+    # video_file_path = './schwarzwaldbahn-karlsruhe-konstanz.mp4'
+    video_file_path = './murgtalbahn.mp4'
 
     vidObj = cv.VideoCapture(video_file_path)
 
     frame_pos = rng.randint(0, vidObj.get(cv.CAP_PROP_FRAME_COUNT))
-    # frame_pos = 71459
+    frame_pos = 127700
 
     # seek to random position
     vidObj.set(cv.CAP_PROP_POS_FRAMES, frame_pos)
@@ -43,8 +45,11 @@ if __name__ == "__main__":
 
     last_state = None
 
+    RUN_SILENTLY = False
+    FIVE_SECONDS_DURATION = 5*int(fps)
+
     with ProcessPoolExecutor() as executor:
-        frame_count = 0
+        frame_count = frame_pos
         while True:
             success, frame = vidObj.read()
             frame_count += 1
@@ -70,8 +75,9 @@ if __name__ == "__main__":
             detected_features = {}
 
             for label in labels:
-                image = label.draw_to_frame(image, expected_y_start=y_start)
-                y_start += 30
+                if not RUN_SILENTLY:
+                    image = label.draw_to_frame(image, expected_y_start=y_start)
+                    y_start += 30
 
                 detected_features.update(label.to_dict())
 
@@ -82,15 +88,20 @@ if __name__ == "__main__":
 
             if last_state is None or last_state["detected_features"] != detected_features:
                 last_state = current_state
-                print(last_state)
+                logging.info(last_state)
 
-            # show the frame
-            cv.imshow('frame', image)
-            pressed_key = cv.waitKey(1)
 
-            if pressed_key == ord('q'):
-                break
-            elif pressed_key == ord('s'):
-                logging.debug(f'Saving frame {frame_count}...')
-                cv.imwrite(f'labeled_images/milestones/frame-{frame_count}-{trunc(time.time())}.jpg', frame)
+            if RUN_SILENTLY:
+                if frame_count % FIVE_SECONDS_DURATION == 0:
+                    logging.info(f'currently at frame {frame_count}')
+            else:
+                # show the frame
+                cv.imshow('frame', image)
+                pressed_key = cv.waitKey(1)
+
+                if pressed_key == ord('q'):
+                    break
+                elif pressed_key == ord('s'):
+                    logging.debug(f'Saving frame {frame_count}...')
+                    cv.imwrite(f'labeled_images/milestones/frame-{frame_count}-{trunc(time.time())}.jpg', frame)
 

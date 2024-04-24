@@ -9,7 +9,7 @@ import torch
 
 logger = logging.getLogger(__name__)
 
-last_results = collections.deque(maxlen=100)
+last_results = collections.deque(maxlen=75)
 
 class RailDirectionDetector(BaseDetector):
     def init(self, fps):
